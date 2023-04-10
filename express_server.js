@@ -11,6 +11,8 @@ const urlDatabase = {
 
 app.use(express.urlencoded({ extended: true }));
 
+function generateRandomString() {};
+
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
