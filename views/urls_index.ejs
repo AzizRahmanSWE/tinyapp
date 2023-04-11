@@ -16,7 +16,7 @@
     />
     
       <%- include("./partials/_header") %>
-      
+
     <title>TinyApp</title>
   </head>
   <body>
@@ -34,6 +34,11 @@
             <tr>
               <td><%= id %></td>
               <td><%= urls[id] %></td>
+              <td>
+                <form method ="POST" action="/urls/9sm5xK/delete">
+                  <button type="submit" class="btn btn-primary">Delete</button>
+                </form>
+              </td>
             </tr>
           <% } %>
         </tbody>
