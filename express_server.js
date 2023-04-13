@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const cookieParser = require("cookie-parser");
+const bcrypt = require("bcryptjs");
 const PORT = 8080; // default port 8080
 
 //EJS TEMPLATE ENGINE
@@ -47,7 +48,7 @@ const addUser = (email, password) => {
   users[id] = {
     id,
     email,
-    password,
+    password: bcrypt.hashSync(password, 10)
   };
   return id;
 };
