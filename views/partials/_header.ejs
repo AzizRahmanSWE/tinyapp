@@ -27,14 +27,10 @@
       </form>
       <% } else { %>
 
-    
-    <form class="form-inline" action="/register" method="post">
-      <input class="form-control" type="email" name="email" placeholder="Email" style="width: 200px; margin: 1em">
+    <form class="form-inline" action="/register" method="get">
       <button type="submit" class="btn btn-primary">Register</button>
     </form>
-
-    <form class="form-inline" action="/login" method="post">
-      <input class="form-control" type="text" name="username" placeholder="Username" style="width: 200px; margin: 1em">
+    <form class="form-inline" action="/login" method="get">
       <button type="submit" class="btn btn-primary">Login</button>
     </form>
     <% } %>
