@@ -1,15 +1,20 @@
 const express = require("express");
 const app = express();
-const cookieParser = require("cookie-parser");
+const cookieSession = require("cookie-session");
 const bcrypt = require("bcryptjs");
 const PORT = 8080; // default port 8080
+// const cookieParser = require("cookie-parser");
 
 //EJS TEMPLATE ENGINE
 app.set("view engine", "ejs");
 
 //MIDLEWARES
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+// app.use(cookieParser());
+app.use(cookieSession({
+  name: "session",
+  keys: ["key1", "key2"],
+}));
 
 //DATABASES
 const urlDatabase = {
@@ -56,24 +61,24 @@ const addUser = (email, password) => {
   return id;
 };
 
-const checkEmail = (database, email) => {
-  for (const user in database) {
-    if (users[user]["email"] === email) {
-      return user;
-    }
-  }
-  return false;
-};
+// const checkEmail = (database, email) => {
+//   for (const user in database) {
+//     if (users[user]["email"] === email) {
+//       return user;
+//     }
+//   }
+//   return false;
+// };
 
 //URL ROUTES
 const urlsForUser = (id) => {
   const userURLs = {};
-  const db = Object.keys(urlDatabase);
+  let db = Object.keys(urlDatabase);
 
-  for (let shortURL in db) {
-    if (urlDatabase[shortURL]["userID"] === id) {
-      console.log(urlDatabase[shortURL]["userID"]);
-      userURLs[shortURL] = urlDatabase[shortURL];
+  for (let shortURLID of db) {
+    if (urlDatabase[shortURLID]["userID"] === id) {
+      console.log(urlDatabase[shortURLID]["userID"]);
+      userURLs[shortURLID] = urlDatabase[shortURLID];
     }
   }
   return userURLs;
@@ -86,21 +91,20 @@ app.get("/", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const templateVars = {
-    // urls: urlDatabase,
-    user: users[req.cookies["user_id"]],
-    urls: urlsForUser(req.cookies["user_id"]),
+    user: users[req.session["user_id"]],
+    urls: urlsForUser(req.session["user_id"]),
   };
 
   if (!templateVars.user) {
-    res.status(400).send("You must be logged in to have access to your URLs.");
+    res.render("urls_index", templateVars)
   } else {
-    res.render("urls_index", templateVars);
+    res.status(400).send("You must be logged in to have access to your URLs.");
   }
 });
 
 app.get("/urls/new", (req, res) => {
   const templateVars = {
-    user: users[req.cookies["user_id"]]
+    user: users[req.session["user_id"]]
   };
   res.render("urls_new", templateVars);
 
@@ -109,7 +113,7 @@ app.get("/urls/new", (req, res) => {
       .status(400)
       .send("You must register or log in to have access.");
   }
-  if (req.cookies["user_id"] !== urlDatabase[templateVars.shortURL]["user_id"]) {
+  if (req.session["user_id"] !== urlDatabase[templateVars.shortURL]["user_id"]) {
     res.status(400).send("URL does not belong to you. Or you must login to the correct account!");
   } else {
     res.render("urls_show", templateVars);
@@ -120,7 +124,7 @@ app.get("/urls/:id", (req, res) => {
   const templateVars = {
     id: req.params.id,
     longURL: urlDatabase[req.params.id]["longURL"],
-    user: users[req.cookies["user_id"]],
+    user: users[req.session["user_id"]],
   };
   res.render("urls_show", templateVars);
 });
@@ -133,7 +137,7 @@ app.get("/u/:id", (req, res) => {
 // get request registration endpoint
 app.get("/register", (req, res) => {
   let templateVars = {
-    user: users[req.cookies["user_id"]]
+    user: users[req.session["user_id"]]
   };
   res.render("urls_register", templateVars);
   req.redirect("/urls");
@@ -142,17 +146,17 @@ app.get("/register", (req, res) => {
 //GET /login endpoint that reponds with a new login form template
 app.get("/login", (req, res) => {
   let templateVars = {
-    user: users[req.cookies["user_id"]]
+    user: users[req.sessionOptions["user_id"]]
   };
   res.render("urls_login", templateVars);
-  req.redirect("/urls");
+  res.redirect("/urls");
 });
 
 app.post("/urls", (req, res) => {
   const shortURL = generateRandomString();
   urlDatabase[shortURL] = {
     longURL: req.body.longURL,
-    userID: req.cookies["user_id"],
+    userID: req.session["user_id"],
   };
   console.log(urlDatabase[shortURL]);
   res.redirect(`/urls/${shortURL}`);
@@ -160,7 +164,7 @@ app.post("/urls", (req, res) => {
 
 //Deletes URl resources
 app.post("/urls/:id/delete", (req, res) => {
-  const user = req.cookies["user_id"];
+  const user = req.session["user_id"];
   const id = req.params.id;
 
   if (user !== urlDatabase[id]["userID"]) {
@@ -178,7 +182,7 @@ app.post("/urls/:id", (req, res) => {
   
   urlDatabase[shortURL].longURL = longURL;
 
-  const user = req.cookies["user_id"];
+  const user = req.session["user_id"];
   
   if (user !== urlDatabase[shortURL]["user_id"]) {
     res.status(400).send("You don't have permission to edit the following URL.");
