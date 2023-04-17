@@ -107,12 +107,14 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:id", (req, res) => {
+  const shortURL = req.params.id;
   const templateVars = {
-    longURL: urlDatabase[req.params.id]["longURL"],
+    id: shortURL,
+    longURL: urlDatabase[shortURL].longURL,
     user: users[req.session["user_id"]],
   };
 
-  if (req.session["user_id"] === urlDatabase[req.params.id]["userID"]) {
+  if (req.session["user_id"] === urlDatabase[shortURL]["userID"]) {
     res.render("urls_show", templateVars);
   } else {
     res.status(400).send("Error, the following URL does not belong to you!")
@@ -205,18 +207,18 @@ app.post("/logout", (req, res) => {
 
 // register post request
 app.post("/register", (req, res) => {
-  const { emailEntered, passwordEntered } = req.body;
+  const { email, password } = req.body;
 
   //Checks for password or email blank fields
-  if (!emailEntered || !passwordEntered) {
+  if (!email || !password) {
     res.status(400).send("Error, Please enter an email or password!(blank)");
   }
   // checks for already registered email.
-  if (getUserByEmail(emailEntered, users)) {
+  if (getUserByEmail(email, users)) {
     res.status(400).send("Error, this email is already registered, login or sign up with a different email.");
   // creates a new user if above are false.
   } else {
-    const user_id = addUser(emailEntered, passwordEntered);
+    const user_id = addUser(email, password);
     req.session.user_id = user_id;
     res.redirect("/urls");
   }
