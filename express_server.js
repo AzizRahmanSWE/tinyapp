@@ -2,13 +2,14 @@ const express = require("express");
 const app = express();
 const cookieSession = require("cookie-session");
 const bcrypt = require("bcryptjs");
+const { getUserByEmail } = require("./helpers")
 const PORT = 8080; // default port 8080
-// const cookieParser = require("cookie-parser");
+
 
 //EJS TEMPLATE ENGINE
 app.set("view engine", "ejs");
 
-//MIDLEWARES
+//MIDDLEWARES
 app.use(express.urlencoded({ extended: true }));
 // app.use(cookieParser());
 app.use(cookieSession({
@@ -36,12 +37,12 @@ const users = {
   userID: {
     id: "userID",
     email: "user1@example.com",
-    password: "purple-monkey-dinosaur",
+    password: bcrypt.hashSync("purplemonkeydinosaur", 10),
   },
   user2ID: {
     id: "user2ID",
     email: "user2@example.com",
-    password: "dishwasher-funk",
+    password: bcrypt.hashSync("dishwasher-funk", 10)
   },
 };
 
@@ -61,16 +62,6 @@ const addUser = (email, password) => {
   return id;
 };
 
-// const checkEmail = (database, email) => {
-//   for (const user in database) {
-//     if (users[user]["email"] === email) {
-//       return user;
-//     }
-//   }
-//   return false;
-// };
-
-//URL ROUTES
 const urlsForUser = (id) => {
   const userURLs = {};
   let db = Object.keys(urlDatabase);
@@ -84,7 +75,7 @@ const urlsForUser = (id) => {
   return userURLs;
 };
 
-
+//URL ROUTES
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
@@ -95,10 +86,11 @@ app.get("/urls", (req, res) => {
     urls: urlsForUser(req.session["user_id"]),
   };
 
-  if (!templateVars.user) {
+  if (templateVars.user) {
     res.render("urls_index", templateVars)
   } else {
     res.status(400).send("You must be logged in to have access to your URLs.");
+    res.redirect
   }
 });
 
@@ -106,27 +98,25 @@ app.get("/urls/new", (req, res) => {
   const templateVars = {
     user: users[req.session["user_id"]]
   };
-  res.render("urls_new", templateVars);
 
   if (!templateVars.user) {
-    res
-      .status(400)
-      .send("You must register or log in to have access.");
-  }
-  if (req.session["user_id"] !== urlDatabase[templateVars.shortURL]["user_id"]) {
-    res.status(400).send("URL does not belong to you. Or you must login to the correct account!");
+    res.render("urls_login", templateVars);
   } else {
-    res.render("urls_show", templateVars);
+    res.render("urls_new", templateVars);
   }
 });
 
 app.get("/urls/:id", (req, res) => {
   const templateVars = {
-    id: req.params.id,
     longURL: urlDatabase[req.params.id]["longURL"],
     user: users[req.session["user_id"]],
   };
-  res.render("urls_show", templateVars);
+
+  if (req.session["user_id"] === urlDatabase[req.params.id]["userID"]) {
+    res.render("urls_show", templateVars);
+  } else {
+    res.status(400).send("Error, the following URL does not belong to you!")
+  }
 });
 
 app.get("/u/:id", (req, res) => {
@@ -140,16 +130,16 @@ app.get("/register", (req, res) => {
     user: users[req.session["user_id"]]
   };
   res.render("urls_register", templateVars);
-  req.redirect("/urls");
+  // req.redirect("/urls");
 });
 
 //GET /login endpoint that reponds with a new login form template
 app.get("/login", (req, res) => {
   let templateVars = {
-    user: users[req.sessionOptions["user_id"]]
+    user: users[req.session["user_id"]]
   };
   res.render("urls_login", templateVars);
-  res.redirect("/urls");
+  // res.redirect("/urls");
 });
 
 app.post("/urls", (req, res) => {
@@ -158,7 +148,6 @@ app.post("/urls", (req, res) => {
     longURL: req.body.longURL,
     userID: req.session["user_id"],
   };
-  console.log(urlDatabase[shortURL]);
   res.redirect(`/urls/${shortURL}`);
 });
 
@@ -168,7 +157,7 @@ app.post("/urls/:id/delete", (req, res) => {
   const id = req.params.id;
 
   if (user !== urlDatabase[id]["userID"]) {
-    console.log("Do Not Have Permission To Delete This URL.");
+    res.status(400).send("Error, Do Not Have Permission To Delete This URL.");
   } else {
     delete urlDatabase[req.params.id];
     res.redirect("/urls");
@@ -177,39 +166,40 @@ app.post("/urls/:id/delete", (req, res) => {
 
 //Updates URL
 app.post("/urls/:id", (req, res) => {
-  const shortURL = req.params.shortURL;
+  // const shortURL = req.params.shortURL;
+  const shortURL = req.params.id;
   const longURL = req.body.longURL;
   
-  urlDatabase[shortURL].longURL = longURL;
+  urlDatabase[shortURL]["longURL"] = longURL;
 
   const user = req.session["user_id"];
-  
   if (user !== urlDatabase[shortURL]["user_id"]) {
     res.status(400).send("You don't have permission to edit the following URL.");
   } else {
     urlDatabase[shortURL].longURL = longURL;
     res.redirect(`/urls/${shortURL}`);
   }
-  res.redirect("/urls/new");
+  // res.redirect("/urls/new");
 });
 
 //Login endpoint
 app.post("/login", (req, res) => {
-  const { emailEntered, passwordEntered } = req.body;
-  const user = checkEmail(users, emailEntered);
+  const { email, password } = req.body;
+  const user = getUserByEmail(email, users);
 
   if (!user) {
     res.status(403).send("Error, email not found!");
-  } else if (!bcrypt.compareSync(passwordEntered, users[user]["password"])) {
+  } else if (!bcrypt.compareSync(password, users[user]["password"])) {
     res.status(403).send("Error, wrong password!");
   } else {
-    res.cookie("user_id", user);
+    // req.session("user_id", user);
+    req.session.user_id = user;
     res.redirect("/urls");
   }
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  req.session = null;
   res.redirect("/login");
 });
 
@@ -218,17 +208,16 @@ app.post("/register", (req, res) => {
   const { emailEntered, passwordEntered } = req.body;
 
   //Checks for password or email blank fields
-  if (!emailEntered && !passwordEntered) {
-    res.status(400).send("Please enter a valid email or password!(blank)");
+  if (!emailEntered || !passwordEntered) {
+    res.status(400).send("Error, Please enter an email or password!(blank)");
   }
   // checks for already registered email.
-  if (checkEmail(users, emailEntered)) {
-    res.status(400).send("This email is already in use, login or sign up with a different email.");
+  if (getUserByEmail(emailEntered, users)) {
+    res.status(400).send("Error, this email is already registered, login or sign up with a different email.");
   // creates a new user if above are false.
   } else {
-    const userID = addUser(emailEntered, passwordEntered);
-    res.cookie("user_id", userID);
-    console.log(users);
+    const user_id = addUser(emailEntered, passwordEntered);
+    req.session.user_id = user_id;
     res.redirect("/urls");
   }
 });
