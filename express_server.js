@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const cookieSession = require("cookie-session");
 const bcrypt = require("bcryptjs");
-const { getUserByEmail } = require("./helpers")
+const { getUserByEmail } = require("./helpers");
 const PORT = 8080; // default port 8080
 
 
@@ -87,10 +87,10 @@ app.get("/urls", (req, res) => {
   };
 
   if (templateVars.user) {
-    res.render("urls_index", templateVars)
+    res.render("urls_index", templateVars);
   } else {
     res.status(400).send("You must be logged in to have access to your URLs.");
-    res.redirect
+    res.redirect;
   }
 });
 
@@ -117,7 +117,7 @@ app.get("/urls/:id", (req, res) => {
   if (req.session["user_id"] === urlDatabase[shortURL]["userID"]) {
     res.render("urls_show", templateVars);
   } else {
-    res.status(400).send("Error, the following URL does not belong to you!")
+    res.status(400).send("Error, the following URL does not belong to you!");
   }
 });
 
